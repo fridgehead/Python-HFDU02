@@ -1,3 +1,4 @@
+import cv
 import usb
 from PIL import Image
 
@@ -43,7 +44,7 @@ def capEnd(handle):
       return False
    return True
 
-def processData(data):
+def getRawImage(data):
 	print "starting sol search"
 	#find the 0f 0f 0f 0f 00 00 0b 06 SOL marker
 	l = 0
@@ -64,8 +65,25 @@ def processData(data):
 				buf[d - 1,b] = data[linenum  + 3 + pix] << 4 | data[linenum + pix + 4]
 				b = b + 1
 			if lc == 300:
-				im.save("piss.jpg")
-				return
+				#im.save("piss.jpg")
+				return im
+#binarize image
+#thin image
+#return for feature matching later
+def processImage(im):
+	cvimg = cv.CreateImageHeader(im.size, cv.IPL_DEPTH_8U,1)
+	cv.SetData(cvimg, im.tostring())
+	cv.Not(cvimg,cvimg)
+	cv.Threshold(cvimg, cvimg, 50, 255, cv.CV_THRESH_BINARY)
+	cv.Not(cvimg,cvimg)
+	cv.Rectangle(cvimg,(0,0), (95,398), (0,0,0), thickness=-1)
+	cv.SaveImage("thresh.jpg",cvimg)
+
+#thin the binary image
+def thinImage(cvim):
+	pass	
+
+
 busses = usb.busses()
 
 i = 0
@@ -110,7 +128,10 @@ for bus in busses :
 	    d.releaseInterface()
             
 	    #do something with the data
-	    processData(dat)
+	    im = getRawImage(dat)
+            im.save("raw.jpg")
+            im2 = processImage(im) 
+
 	    
 #start of frame seems to be a block of 0xf
 
