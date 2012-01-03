@@ -1,6 +1,9 @@
 import cv
 import usb
 from PIL import Image
+import pymorph as m
+import numpy as np
+import mahotas
 
 def ledOn(handle):
    handle.bulkWrite(1, [0x05,0x01], 150)
@@ -49,6 +52,7 @@ def getRawImage(data):
 	#find the 0f 0f 0f 0f 00 00 0b 06 SOL marker
 	l = 0
 	im = Image.new("L", (301,398))
+	img = np.zeros([301,398], dtype=np.uint8)
 	buf = im.load()
 	needle = (0x0f, 0x0f, 0x0f, 0x0f, 0x00, 0x00, 0x0b, 0x06)
 	lc = 0
@@ -63,21 +67,28 @@ def getRawImage(data):
 			b = 0
 			for pix in range(0,796,2):
 				buf[d - 1,b] = data[linenum  + 3 + pix] << 4 | data[linenum + pix + 4]
+				img[d-1,b] = buf[d - 1,b]
 				b = b + 1
 			if lc == 300:
+				img[0:98, :] = 0
 				#im.save("piss.jpg")
-				return im
+				return img
 #binarize image
 #thin image
 #return for feature matching later
 def processImage(im):
-	cvimg = cv.CreateImageHeader(im.size, cv.IPL_DEPTH_8U,1)
-	cv.SetData(cvimg, im.tostring())
-	cv.Not(cvimg,cvimg)
-	cv.Threshold(cvimg, cvimg, 50, 255, cv.CV_THRESH_BINARY)
-	cv.Not(cvimg,cvimg)
-	cv.Rectangle(cvimg,(0,0), (95,398), (0,0,0), thickness=-1)
-	cv.SaveImage("thresh.jpg",cvimg)
+	imb = m.overlay(im)
+	mahotas.imsave("before.png",imb)
+	print "starting img process.. binarizing"
+	b1 = im > 100 #binarize
+	print "thinnning"
+	b2 = m.thin(b1) #thin
+	print "pruning"
+	b3 = m.thin(b2, m.endpoints('homotopic'), 10)
+
+	imgout = m.overlay(b3)
+	mahotas.imsave("lol.png", imgout)
+
 
 #thin the binary image
 def thinImage(cvim):
@@ -129,7 +140,6 @@ for bus in busses :
             
 	    #do something with the data
 	    im = getRawImage(dat)
-            im.save("raw.jpg")
             im2 = processImage(im) 
 
 	    
