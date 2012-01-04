@@ -31,7 +31,7 @@ def capGo(handle):
    if resp != (0x00,0x01,0x01,0x01):
       print "capGo invalid ack"
       return False
-   dat= handle.bulkRead(2,401*301 *6, 1000)
+   dat= handle.bulkRead(2,301*398 *9, 2500)
 
    return dat
 
@@ -55,9 +55,11 @@ def getRawImage(data):
 	img = np.zeros([301,398], dtype=np.uint8)
 	buf = im.load()
 	needle = (0x0f, 0x0f, 0x0f, 0x0f, 0x00, 0x00, 0x0b, 0x06)
-	lc = 0
 	imCount = 0
+	retVal = None
+	lc = 0
 	for i in range (len(data)):
+		linenum = 0
 		if data[i : i + len(needle)] == needle:
 					
 			lc = lc + 1
@@ -66,13 +68,21 @@ def getRawImage(data):
 			#print "found SOL marker for line: " , d , " - off: " + str(hex(i))
 			b = 0
 			for pix in range(0,796,2):
-				buf[d - 1,b] = data[linenum  + 3 + pix] << 4 | data[linenum + pix + 4]
-				img[d-1,b] = buf[d - 1,b]
-				b = b + 1
+				try:
+					buf[d - 1,b] = data[linenum  + 3 + pix] << 4 | data[linenum + pix + 4]
+					img[d-1,b] = buf[d - 1,b]
+					b = b + 1
+				except:
+					print "EOD"
 			if lc == 300:
-				img[0:98, :] = 0
-				#im.save("piss.jpg")
-				return img
+				lc = 0
+				#img[0:98, :] = 0
+				print "..found image"
+				im.save("piss" + str(imCount) + ".jpg")
+				imCount += 1
+				retVal = img
+	print 'return the last succesful frame to let the AGC warm up'
+	return retVal
 #binarize image
 #thin image
 #return for feature matching later
