@@ -31,7 +31,7 @@ def capGo(handle):
    if resp != (0x00,0x01,0x01,0x01):
       print "capGo invalid ack"
       return False
-   dat= handle.bulkRead(2,301*398 *9, 2500)
+   dat= handle.bulkRead(2,301*398 *12, 2500)
 
    return dat
 
