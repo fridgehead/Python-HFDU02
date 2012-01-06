@@ -87,16 +87,27 @@ def getRawImage(data):
 #thin image
 #return for feature matching later
 def processImage(im):
+	elem = np.array([[0,0,0],[0,1,0],[0,0,0]])
 	imb = m.overlay(im)
 	mahotas.imsave("before.png",imb)
 	print "starting img process.. binarizing"
-	b1 = im > 100 #binarize
-	print "thinnning"
+	b1 = im > 205 #binarize
+	#remove single pixels
+	singpix = mahotas.morph.hitmiss(b1, elem)
+	b1 = (b1 - singpix) > 0
+
+
+	print "thinning"
 	b2 = m.thin(b1) #thin
 	print "pruning"
-	b3 = m.thin(b2, m.endpoints('homotopic'), 10)
+	b3 = m.thin(b2, m.endpoints('homotopic'), 5)
 
-	imgout = m.overlay(b3)
+	#remove single pixels
+	singpix = mahotas.morph.hitmiss(b3, elem)
+	b3 = b3 - singpix
+
+	imgout = m.overlay(b1,b3)
+
 	mahotas.imsave("lol.png", imgout)
 
 
