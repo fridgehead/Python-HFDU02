@@ -4,6 +4,7 @@ from PIL import Image
 import pymorph as m
 import numpy as np
 import mahotas
+from FingerProcess import FingerProcess
 
 def ledOn(handle):
    handle.bulkWrite(1, [0x05,0x01], 150)
@@ -56,7 +57,7 @@ def getRawImage(data):
 	buf = im.load()
 	needle = (0x0f, 0x0f, 0x0f, 0x0f, 0x00, 0x00, 0x0b, 0x06)
 	imCount = 0
-	retVal = None
+	retVal = np.zeros((1,301,398), dtype=np.uint8)
 	lc = 0
 	for i in range (len(data)):
 		linenum = 0
@@ -73,40 +74,31 @@ def getRawImage(data):
 					img[d-1,b] = buf[d - 1,b]
 					b = b + 1
 				except:
-					print "EOD"
+					pass
 			if lc == 300:
 				lc = 0
-				#img[0:98, :] = 0
 				print "..found image"
 				im.save("piss" + str(imCount) + ".jpg")
+				if imCount > 0:
+					retVal = np.append(retVal, [img], 0) 
+					print retVal.shape
+				else:
+					print "..ditching first image"
+					retVal[0] = img
 				imCount += 1
-				retVal = img
-	print 'return the last succesful frame to let the AGC warm up'
-	return retVal
+	r = np.median(retVal,0)
+	print r.max()
+	return np.cast['uint8'](r)
 #binarize image
 #thin image
 #return for feature matching later
 def processImage(im):
-	elem = np.array([[0,0,0],[0,1,0],[0,0,0]])
 	imb = m.overlay(im)
 	mahotas.imsave("before.png",imb)
-	print "starting img process.. binarizing"
-	b1 = im > 205 #binarize
-	#remove single pixels
-	singpix = mahotas.morph.hitmiss(b1, elem)
-	b1 = (b1 - singpix) > 0
-
-
-	print "thinning"
-	b2 = m.thin(b1) #thin
-	print "pruning"
-	b3 = m.thin(b2, m.endpoints('homotopic'), 5)
-
-	#remove single pixels
-	singpix = mahotas.morph.hitmiss(b3, elem)
-	b3 = b3 - singpix
-
-	imgout = m.overlay(b1,b3)
+	print imb.max()
+	f = FingerProcess()
+	b3 = f.process(im)
+	imgout = m.overlay(im,b3)
 
 	mahotas.imsave("lol.png", imgout)
 
